@@ -8,6 +8,7 @@ import pytest_asyncio
 from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.db import get_db
 from app.main import app
@@ -21,7 +22,7 @@ TEST_DATABASE_URL = os.environ.get(
 )
 MIGRATION_PATH = pathlib.Path(__file__).resolve().parents[2] / "migrations" / "001_init.sql"
 
-test_engine = create_async_engine(TEST_DATABASE_URL)
+test_engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
 
@@ -29,10 +30,15 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 async def apply_migrations():
     sql = MIGRATION_PATH.read_text()
     async with test_engine.begin() as conn:
-        await conn.exec_driver_sql(
+        # asyncpg's extended query protocol rejects multi-statement strings
+        # (PostgresSyntaxError: cannot insert multiple commands into a
+        # prepared statement). Drop to the raw driver connection, which uses
+        # the simple query protocol and allows multiple statements per call.
+        raw = await conn.get_raw_connection()
+        await raw.driver_connection.execute(
             "DROP TABLE IF EXISTS applications, skills_inventory, api_keys CASCADE"
         )
-        await conn.exec_driver_sql(sql)
+        await raw.driver_connection.execute(sql)
     yield
 
 
