@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getApiKey, setApiKey } from "../api.js";
+import ErrorBanner from "../components/ErrorBanner.jsx";
 
 export default function Settings() {
   const [key, setKey] = useState(getApiKey());
   const [saved, setSaved] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
+  const savedTimeoutRef = useRef(null);
 
   useEffect(() => {
     const message = sessionStorage.getItem("authMessage");
@@ -14,21 +16,28 @@ export default function Settings() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current);
+      }
+    };
+  }, []);
+
   function handleSave(e) {
     e.preventDefault();
     setApiKey(key.trim());
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (savedTimeoutRef.current) {
+      clearTimeout(savedTimeoutRef.current);
+    }
+    savedTimeoutRef.current = setTimeout(() => setSaved(false), 2000);
   }
 
   return (
     <div className="max-w-md">
       <h1 className="mb-2 text-3xl font-bold">Settings</h1>
-      {authMessage && (
-        <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {authMessage}
-        </div>
-      )}
+      <ErrorBanner message={authMessage} />
       <p className="mb-6 text-gray-600">
         Paste the API key issued to you. It's stored only in this browser and sent as the
         <code className="mx-1 rounded bg-gray-200 px-1">X-API-Key</code> header on every request.
