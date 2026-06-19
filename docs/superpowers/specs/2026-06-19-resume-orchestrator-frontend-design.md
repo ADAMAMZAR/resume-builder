@@ -15,6 +15,7 @@ The existing backend has no way to re-fetch an application's state after creatio
 1. **Map `created_at` on the `Application` ORM model** (`backend/app/models/application.py`). The column already exists in `migrations/001_init.sql`; it was deliberately left unmapped during backend work since nothing needed it. Add `created_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)` (read-only — never written by application code, relies on the DB default).
 2. **`GET /api/applications/{id}`** — new route in `backend/app/routers/applications.py`, reuses `applications_repo.get_application(db, user_id, app_id)`. 404 if missing or not owned (same IDOR-safe pattern as existing routes). Returns `ApplicationOut`.
 3. **`GET /api/applications`** — new route, new repo function `applications_repo.list_applications(db, user_id)` that does `SELECT * FROM applications WHERE user_id = :user_id ORDER BY created_at DESC`. Returns `list[ApplicationOut]`.
+4. **CORS middleware** — the Vite dev server (`http://localhost:5173`) and the FastAPI server (`http://localhost:8000`) are different origins, so the backend needs `CORSMiddleware` allowing that origin or the browser will block every request. Added to `backend/app/main.py`.
 
 No changes to existing routes, request/response shapes, or the state machine itself. No new migration needed (column already exists).
 
