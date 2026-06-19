@@ -15,6 +15,14 @@ gemini = GeminiStubClient()
 claude = ClaudeStubClient()
 
 
+@router.get("", response_model=list[ApplicationOut])
+async def list_applications_route(
+    user_id=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await applications_repo.list_applications(db, user_id)
+
+
 @router.post("", response_model=ApplicationOut, status_code=status.HTTP_201_CREATED)
 async def create_application_route(
     payload: ApplicationCreate,

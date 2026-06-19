@@ -205,3 +205,38 @@ async def test_get_application_not_found_returns_404(client, api_key):
 
     resp = await client.get(f"/api/applications/{uuid.uuid4()}", headers=api_key["headers"])
     assert resp.status_code == 404
+
+
+async def test_list_applications_returns_only_own_apps_newest_first(client, api_key, db_session):
+    import hashlib
+    import uuid
+
+    from app.models.api_key import ApiKey
+
+    first = await client.post(
+        "/api/applications",
+        json={"company_name": "First Co", "role_title": "Engineer", "jd_text": "JD text"},
+        headers=api_key["headers"],
+    )
+    second = await client.post(
+        "/api/applications",
+        json={"company_name": "Second Co", "role_title": "Engineer", "jd_text": "JD text"},
+        headers=api_key["headers"],
+    )
+
+    other_user_id = uuid.uuid4()
+    other_raw_key = f"other-key-{other_user_id}"
+    other_hash = hashlib.sha256(other_raw_key.encode()).hexdigest()
+    db_session.add(ApiKey(id=uuid.uuid4(), user_id=other_user_id, key_hash=other_hash))
+    await db_session.commit()
+    await client.post(
+        "/api/applications",
+        json={"company_name": "Other User Co", "role_title": "Engineer", "jd_text": "JD text"},
+        headers={"X-API-Key": other_raw_key},
+    )
+
+    resp = await client.get("/api/applications", headers=api_key["headers"])
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 2
+    assert [a["company_name"] for a in body] == ["Second Co", "First Co"]

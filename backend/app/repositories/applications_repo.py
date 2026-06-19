@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select, update
+from sqlalchemy import desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.application import Application
@@ -26,6 +26,15 @@ async def get_application(db: AsyncSession, user_id: uuid.UUID, app_id: uuid.UUI
         select(Application).where(Application.id == app_id, Application.user_id == user_id)
     )
     return result.scalar_one_or_none()
+
+
+async def list_applications(db: AsyncSession, user_id: uuid.UUID) -> list[Application]:
+    result = await db.execute(
+        select(Application)
+        .where(Application.user_id == user_id)
+        .order_by(desc(Application.created_at))
+    )
+    return list(result.scalars().all())
 
 
 async def update_status_conditional(
