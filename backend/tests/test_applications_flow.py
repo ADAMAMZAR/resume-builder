@@ -147,3 +147,14 @@ async def test_concurrent_approve_only_one_request_succeeds(client, api_key):
     )
     statuses = sorted(r.status_code for r in results)
     assert statuses == [200, 409]
+
+
+async def test_created_application_includes_created_at(client, api_key):
+    resp = await client.post(
+        "/api/applications",
+        json={"company_name": "Acme", "role_title": "Engineer", "jd_text": "JD text"},
+        headers=api_key["headers"],
+    )
+    assert resp.status_code == 201
+    assert "created_at" in resp.json()
+    assert resp.json()["created_at"] is not None

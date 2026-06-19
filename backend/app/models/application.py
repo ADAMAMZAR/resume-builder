@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import SmallInteger, String, Text
+from sqlalchemy import SmallInteger, String, Text, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,3 +23,6 @@ class Application(Base):
     approved_skills_version: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
     final_resume_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     final_cover_letter_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -36,6 +37,7 @@ class ApplicationOut(BaseModel):
     approved_skills: list[str] | None = None
     final_resume_json: dict | None = None
     final_cover_letter_md: str | None = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
