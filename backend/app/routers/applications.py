@@ -46,6 +46,18 @@ async def create_application_route(
     return app_row
 
 
+@router.get("/{app_id}", response_model=ApplicationOut)
+async def get_application_route(
+    app_id: uuid.UUID,
+    user_id=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    app_row = await applications_repo.get_application(db, user_id, app_id)
+    if app_row is None:
+        raise HTTPException(status_code=404, detail="application not found")
+    return app_row
+
+
 @router.get("/{app_id}/pending-approval", response_model=PendingApprovalOut)
 async def pending_approval_route(
     app_id: uuid.UUID,

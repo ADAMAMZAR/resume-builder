@@ -158,3 +158,50 @@ async def test_created_application_includes_created_at(client, api_key):
     assert resp.status_code == 201
     assert "created_at" in resp.json()
     assert resp.json()["created_at"] is not None
+
+
+async def test_get_application_returns_current_state(client, api_key):
+    create_resp = await client.post(
+        "/api/applications",
+        json={"company_name": "Acme", "role_title": "Engineer", "jd_text": "JD text"},
+        headers=api_key["headers"],
+    )
+    app_id = create_resp.json()["id"]
+
+    resp = await client.get(f"/api/applications/{app_id}", headers=api_key["headers"])
+    assert resp.status_code == 200
+    assert resp.json()["id"] == app_id
+    assert resp.json()["status"] == "awaiting_human"
+
+
+async def test_get_application_for_other_users_application_returns_404(client, api_key, db_session):
+    import hashlib
+    import uuid
+
+    from app.models.api_key import ApiKey
+
+    create_resp = await client.post(
+        "/api/applications",
+        json={"company_name": "Acme", "role_title": "Engineer", "jd_text": "JD text"},
+        headers=api_key["headers"],
+    )
+    app_id = create_resp.json()["id"]
+
+    other_user_id = uuid.uuid4()
+    other_raw_key = f"other-key-{other_user_id}"
+    other_hash = hashlib.sha256(other_raw_key.encode()).hexdigest()
+    db_session.add(ApiKey(id=uuid.uuid4(), user_id=other_user_id, key_hash=other_hash))
+    await db_session.commit()
+
+    resp = await client.get(
+        f"/api/applications/{app_id}",
+        headers={"X-API-Key": other_raw_key},
+    )
+    assert resp.status_code == 404
+
+
+async def test_get_application_not_found_returns_404(client, api_key):
+    import uuid
+
+    resp = await client.get(f"/api/applications/{uuid.uuid4()}", headers=api_key["headers"])
+    assert resp.status_code == 404
